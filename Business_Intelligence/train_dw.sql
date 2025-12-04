@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.0
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost:3306
--- Generation Time: Dec 03, 2025 at 01:50 PM
--- Server version: 8.0.30
--- PHP Version: 8.1.10
+-- Host: 127.0.0.1
+-- Waktu pembuatan: 04 Des 2025 pada 06.06
+-- Versi server: 10.4.32-MariaDB
+-- Versi PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,26 +18,67 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `bi_kel_6`
+-- Database: `train_dw`
 --
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `fact_sales`
+-- Struktur dari tabel `dim_customer`
+--
+
+CREATE TABLE `dim_customer` (
+  `customer_key` int(11) NOT NULL,
+  `customer_id` varchar(50) DEFAULT NULL,
+  `customer_name` varchar(255) DEFAULT NULL,
+  `segment` varchar(100) DEFAULT NULL,
+  `city` varchar(100) DEFAULT NULL,
+  `state` varchar(100) DEFAULT NULL,
+  `country` varchar(100) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `dim_product`
+--
+
+CREATE TABLE `dim_product` (
+  `product_key` int(11) NOT NULL,
+  `product_id` varchar(50) DEFAULT NULL,
+  `product_name` varchar(255) DEFAULT NULL,
+  `category` varchar(100) DEFAULT NULL,
+  `sub_category` varchar(100) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `dim_time`
+--
+
+CREATE TABLE `dim_time` (
+  `time_key` int(11) NOT NULL,
+  `full_date` date DEFAULT NULL,
+  `day` int(11) DEFAULT NULL,
+  `month` int(11) DEFAULT NULL,
+  `quarter` int(11) DEFAULT NULL,
+  `year` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `fact_sales`
 --
 
 CREATE TABLE `fact_sales` (
-  `sales_key` int NOT NULL,
-  `order_id` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `product_id` int DEFAULT NULL,
-  `customer_id` int DEFAULT NULL,
-  `store_id` int DEFAULT NULL,
-  `time_id` int DEFAULT NULL,
-  `quantity` int DEFAULT NULL,
-  `sales` decimal(10,2) DEFAULT NULL,
-  `profit` decimal(10,2) DEFAULT NULL,
-  `discount` decimal(5,2) DEFAULT NULL
+  `sales_key` int(11) NOT NULL,
+  `order_id` varchar(50) DEFAULT NULL,
+  `product_key` int(11) DEFAULT NULL,
+  `customer_key` int(11) DEFAULT NULL,
+  `time_key` int(11) DEFAULT NULL,
+  `sales` decimal(10,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -45,37 +86,70 @@ CREATE TABLE `fact_sales` (
 --
 
 --
--- Indexes for table `fact_sales`
+-- Indeks untuk tabel `dim_customer`
+--
+ALTER TABLE `dim_customer`
+  ADD PRIMARY KEY (`customer_key`);
+
+--
+-- Indeks untuk tabel `dim_product`
+--
+ALTER TABLE `dim_product`
+  ADD PRIMARY KEY (`product_key`);
+
+--
+-- Indeks untuk tabel `dim_time`
+--
+ALTER TABLE `dim_time`
+  ADD PRIMARY KEY (`time_key`);
+
+--
+-- Indeks untuk tabel `fact_sales`
 --
 ALTER TABLE `fact_sales`
   ADD PRIMARY KEY (`sales_key`),
-  ADD KEY `product_key` (`product_id`),
-  ADD KEY `customer_key` (`customer_id`),
-  ADD KEY `store_key` (`store_id`),
-  ADD KEY `time_key` (`time_id`);
+  ADD KEY `product_key` (`product_key`),
+  ADD KEY `customer_key` (`customer_key`),
+  ADD KEY `time_key` (`time_key`);
 
 --
--- AUTO_INCREMENT for dumped tables
+-- AUTO_INCREMENT untuk tabel yang dibuang
 --
 
 --
--- AUTO_INCREMENT for table `fact_sales`
+-- AUTO_INCREMENT untuk tabel `dim_customer`
+--
+ALTER TABLE `dim_customer`
+  MODIFY `customer_key` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `dim_product`
+--
+ALTER TABLE `dim_product`
+  MODIFY `product_key` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `dim_time`
+--
+ALTER TABLE `dim_time`
+  MODIFY `time_key` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `fact_sales`
 --
 ALTER TABLE `fact_sales`
-  MODIFY `sales_key` int NOT NULL AUTO_INCREMENT;
+  MODIFY `sales_key` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- Constraints for dumped tables
+-- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
 --
 
 --
--- Constraints for table `fact_sales`
+-- Ketidakleluasaan untuk tabel `fact_sales`
 --
 ALTER TABLE `fact_sales`
-  ADD CONSTRAINT `fact_sales_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `dim_product` (`product_id`),
-  ADD CONSTRAINT `fact_sales_ibfk_2` FOREIGN KEY (`customer_id`) REFERENCES `dim_customer` (`customer_id`),
-  ADD CONSTRAINT `fact_sales_ibfk_3` FOREIGN KEY (`store_id`) REFERENCES `dim_store` (`store_id`),
-  ADD CONSTRAINT `fact_sales_ibfk_4` FOREIGN KEY (`time_id`) REFERENCES `dim_time` (`time_key`);
+  ADD CONSTRAINT `fact_sales_ibfk_1` FOREIGN KEY (`product_key`) REFERENCES `dim_product` (`product_key`),
+  ADD CONSTRAINT `fact_sales_ibfk_2` FOREIGN KEY (`customer_key`) REFERENCES `dim_customer` (`customer_key`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
