@@ -1,0 +1,35 @@
+# ========= Python / venv =========
+.venv/
+venv/
+ENV/
+env/
+
+**/Lib/site-packages/
+**/Scripts/
+**/pyvenv.cfg
+
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.dll
+
+# Pip / build cache
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# ========= Flutter =========
+Mobile/pcvk/.dart_tool/
+Mobile/pcvk/build/
+Mobile/pcvk/android/.kotlin/
+Mobile/pcvk/android/.gradle/
+Mobile/pcvk/android/app/build/
+Mobile/pcvk/android/build/
+
+# ========= IDE / OS =========
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
