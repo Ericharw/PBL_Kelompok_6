@@ -1,5 +1,6 @@
 import os
 import pickle
+import base64
 from typing import Any, Dict, Tuple, Optional
 
 import cv2
@@ -11,6 +12,7 @@ from skimage.color import rgb2gray
 from skimage.feature import hog
 from skimage.filters import gabor
 from skimage.segmentation import slic
+from facial_hair_detector import detect_face_simple, main_facial_hair_detection
 
 # =========================================================
 # Config
@@ -217,6 +219,7 @@ async def detect(file: UploadFile = File(...)):
     """
     multipart/form-data field:
       - file: image (jpg/png/anything) -> we decode bytes to verify
+    Returns both hijab detection and facial hair detection results.
     """
     if model is None or threshold is None:
         raise HTTPException(status_code=500, detail="Model not loaded.")
@@ -243,18 +246,58 @@ async def detect(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Invalid image file: {e}")
 
     try:
+        # === Hijab Detection ===
         feat = extract_feature_from_bgr(bgr).reshape(1, -1)
         score = float(decision_score_from_pipeline(model, feat)[0])
 
         pred = 1 if score > float(threshold) else 0
         label = "HIJAB" if pred == 1 else "NONHIJAB"
 
-        return {
+        hijab_result = {
             "label": label,
             "pred": pred,
             "score": score,
             "threshold": float(threshold),
             "margin_from_threshold": float(score - float(threshold)),
+        }
+
+        # === Facial Hair Detection ===
+        facial_hair_result = {
+            "success": False,
+            "has_facial_hair": False,
+            "coverage_percentage": 0.0,
+            "confidence": 0.0,
+            "message": "Face not detected for facial hair analysis",
+            "result_image": None
+        }
+
+        # Convert BGR to RGB for facial hair detection
+        rgb_img = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        face_crop = detect_face_simple(rgb_img)
+        
+        if face_crop is not None and face_crop.size > 0:
+            result_img, beard_mask = main_facial_hair_detection(face_crop)
+            
+            if result_img is not None and beard_mask is not None:
+                has_facial_hair = bool(np.any(beard_mask))
+                coverage_percentage = float(np.sum(beard_mask) / beard_mask.size * 100) if beard_mask.size > 0 else 0.0
+
+                result_bgr = cv2.cvtColor(result_img, cv2.COLOR_RGB2BGR)
+                _, buffer = cv2.imencode('.jpg', result_bgr)
+                result_base64 = base64.b64encode(buffer).decode('utf-8')
+                
+                facial_hair_result = {
+                    "success": True,
+                    "has_facial_hair": has_facial_hair,
+                    "coverage_percentage": round(coverage_percentage, 2),
+                    "confidence": round(min(coverage_percentage / 10, 1.0), 2),
+                    "result_image": f'data:image/jpeg;base64,{result_base64}',
+                    "message": 'Facial hair detected' if has_facial_hair else 'No facial hair detected'
+                }
+
+        return {
+            "hijab_detection": hijab_result,
+            "facial_hair_detection": facial_hair_result,
             # debug fields (boleh dihapus nanti)
             "filename": file.filename,
             "content_type": file.content_type,

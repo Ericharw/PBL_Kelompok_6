@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detection API Test</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 20px; color: #333; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card h2 { font-size: 16px; margin-bottom: 15px; color: #555; }
+        input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; }
+        .btn { background: #4a90d9; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #3a7bc8; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-red { background: #dc3545; }
+        .btn-green { background: #28a745; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab { padding: 8px 16px; background: #eee; border: none; border-radius: 4px; cursor: pointer; }
+        .tab.active { background: #4a90d9; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .preview { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px; }
+        .preview img { max-width: 250px; max-height: 250px; border: 1px solid #ddd; border-radius: 4px; }
+        .preview-box { text-align: center; }
+        .preview-box p { margin-top: 5px; font-size: 12px; color: #666; }
+        video { width: 100%; max-width: 400px; background: #000; border-radius: 4px; }
+        .results { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .result-box { background: #f9f9f9; padding: 15px; border-radius: 4px; }
+        .result-box h3 { font-size: 14px; margin-bottom: 10px; }
+        .result-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+        .badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .badge-green { background: #d4edda; color: #155724; }
+        .badge-red { background: #f8d7da; color: #721c24; }
+        .badge-yellow { background: #fff3cd; color: #856404; }
+        .badge-blue { background: #cce5ff; color: #004085; }
+        .loading { text-align: center; padding: 20px; display: none; }
+        .error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-top: 10px; display: none; }
+        .health { display: inline-block; padding: 5px 10px; border-radius: 4px; font-size: 12px; margin-left: 10px; }
+        .health-ok { background: #d4edda; color: #155724; }
+        .health-err { background: #f8d7da; color: #721c24; }
+        pre { background: #1e1e1e; color: #ddd; padding: 10px; border-radius: 4px; font-size: 11px; overflow: auto; max-height: 300px; }
+        @media (max-width: 600px) { .results { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Detection API Test</h1>
+        
+        <div class="card">
+            <h2>API Settings</h2>
+            <input type="text" id="apiUrl" value="http://localhost:5000" placeholder="API URL">
+            <button class="btn" onclick="checkHealth()">Check Health</button>
+            <span id="healthStatus"></span>
+        </div>
+
+        <div class="card">
+            <h2>Image Input</h2>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('upload')">Upload File</button>
+                <button class="tab" onclick="switchTab('camera')">Camera</button>
+            </div>
+
+            <div id="uploadTab" class="tab-content active">
+                <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)">
+                <button class="btn" id="detectBtn" onclick="detectImage()" disabled>Detect</button>
+            </div>
+
+            <div id="cameraTab" class="tab-content">
+                <video id="cameraVideo" autoplay playsinline></video>
+                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <div style="margin-top:10px;">
+                    <button class="btn btn-green" id="startCameraBtn" onclick="startCamera()">Start Camera</button>
+                    <button class="btn btn-red" id="stopCameraBtn" onclick="stopCamera()" style="display:none;">Stop</button>
+                    <button class="btn" id="captureBtn" onclick="capturePhoto()" disabled>Capture</button>
+                    <button class="btn" id="detectCameraBtn" onclick="detectCameraImage()" disabled>Detect</button>
+                </div>
+            </div>
+
+            <div class="preview">
+                <div class="preview-box" id="inputPreview" style="display:none;">
+                    <img id="previewImg" src="" alt="Preview">
+                    <p>Input</p>
+                </div>
+                <div class="preview-box" id="resultPreview" style="display:none;">
+                    <img id="resultImg" src="" alt="Result">
+                    <p>Result</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">Processing...</div>
+        <div class="error" id="errorMessage"></div>
+
+        <div class="card" id="resultsCard" style="display:none;">
+            <h2>Results</h2>
+            <div class="results">
+                <div class="result-box">
+                    <h3>Hijab Detection</h3>
+                    <div id="hijabResults"></div>
+                </div>
+                <div class="result-box">
+                    <h3>Facial Hair Detection</h3>
+                    <div id="facialHairResults"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="jsonCard" style="display:none;">
+            <h2>Raw JSON</h2>
+            <pre id="jsonOutput"></pre>
+        </div>
+    </div>
+
+    <script>
+        let cameraStream = null;
+        let capturedImageBlob = null;
+
+        const getApiUrl = () => document.getElementById('apiUrl').value.replace(/\/$/, '');
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.tab:nth-child(${tab === 'upload' ? 1 : 2})`).classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+
+        async function startCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                document.getElementById('cameraVideo').srcObject = cameraStream;
+                document.getElementById('startCameraBtn').style.display = 'none';
+                document.getElementById('stopCameraBtn').style.display = 'inline-block';
+                document.getElementById('captureBtn').disabled = false;
+            } catch (e) { showError('Camera error: ' + e.message); }
+        }
+
+        function stopCamera() {
+            if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+            document.getElementById('cameraVideo').srcObject = null;
+            document.getElementById('startCameraBtn').style.display = 'inline-block';
+            document.getElementById('stopCameraBtn').style.display = 'none';
+            document.getElementById('captureBtn').disabled = true;
+            document.getElementById('detectCameraBtn').disabled = true;
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.getElementById('cameraCanvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            canvas.toBlob(blob => {
+                capturedImageBlob = blob;
+                document.getElementById('previewImg').src = URL.createObjectURL(blob);
+                document.getElementById('inputPreview').style.display = 'block';
+                document.getElementById('detectCameraBtn').disabled = false;
+            }, 'image/jpeg', 0.9);
+        }
+
+        function previewImage(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    document.getElementById('previewImg').src = ev.target.result;
+                    document.getElementById('inputPreview').style.display = 'block';
+                    document.getElementById('detectBtn').disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function checkHealth() {
+            const el = document.getElementById('healthStatus');
+            el.innerHTML = '<span class="health">Checking...</span>';
+            try {
+                const res = await fetch(`${getApiUrl()}/health`);
+                const data = await res.json();
+                el.innerHTML = res.ok ? `<span class="health health-ok">OK (Threshold: ${data.threshold})</span>` : '<span class="health health-err">Error</span>';
+            } catch (e) { el.innerHTML = `<span class="health health-err">Unavailable</span>`; }
+        }
+
+        async function detectImage() {
+            const file = document.getElementById('imageInput').files[0];
+            if (!file) return showError('Select an image first');
+            await sendDetection(file);
+        }
+
+        async function detectCameraImage() {
+            if (!capturedImageBlob) return showError('Capture a photo first');
+            await sendDetection(capturedImageBlob, 'capture.jpg');
+        }
+
+        async function sendDetection(file, filename) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultsCard').style.display = 'none';
+            document.getElementById('jsonCard').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('resultPreview').style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file, filename || file.name);
+                const res = await fetch(`${getApiUrl()}/detect`, { method: 'POST', body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Detection failed');
+                displayResults(data);
+            } catch (e) { showError(e.message); }
+            finally { document.getElementById('loading').style.display = 'none'; }
+        }
+
+        function displayResults(data) {
+            const hijab = data.hijab_detection;
+            const facial = data.facial_hair_detection;
+
+            document.getElementById('hijabResults').innerHTML = hijab ? `
+                <div class="result-row"><span>Status</span><span class="badge ${hijab.label === 'HIJAB' ? 'badge-green' : 'badge-red'}">${hijab.label}</span></div>
+                <div class="result-row"><span>Score</span><span>${hijab.score?.toFixed(4) || 'N/A'}</span></div>
+                <div class="result-row"><span>Threshold</span><span>${hijab.threshold?.toFixed(4) || 'N/A'}</span></div>
+            ` : '<p>No data</p>';
+
+            document.getElementById('facialHairResults').innerHTML = facial ? `
+                <div class="result-row"><span>Status</span><span class="badge ${facial.has_facial_hair ? 'badge-yellow' : 'badge-blue'}">${facial.has_facial_hair ? 'Detected' : 'Not Detected'}</span></div>
+                <div class="result-row"><span>Coverage</span><span>${facial.coverage_percentage?.toFixed(2) || 0}%</span></div>
+                <div class="result-row"><span>Confidence</span><span>${(facial.confidence * 100)?.toFixed(1) || 0}%</span></div>
+            ` : '<p>No data</p>';
+
+            if (facial?.result_image) {
+                document.getElementById('resultImg').src = facial.result_image;
+                document.getElementById('resultPreview').style.display = 'block';
+            }
+
+            document.getElementById('resultsCard').style.display = 'block';
+            document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+            document.getElementById('jsonCard').style.display = 'block';
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        window.onload = checkHealth;
+        window.onbeforeunload = stopCamera;
+    </script>
+</body>
+</html>
