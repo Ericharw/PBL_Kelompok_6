@@ -13,7 +13,7 @@ class FaceDetectionPage extends StatefulWidget {
 }
 
 class _FaceDetectionPageState extends State<FaceDetectionPage> {
-  final String apiBaseUrl = "http://192.168.63.195:8000";
+  final String apiBaseUrl = "http://192.168.1.81:8000";
   late final ApiService api;
 
   String? imagePath;
@@ -74,6 +74,106 @@ class _FaceDetectionPageState extends State<FaceDetectionPage> {
     }
   }
 
+  String fmtNum(dynamic v, {int decimals = 2}) {
+    if (v == null) return "-";
+    if (v is num) return v.toStringAsFixed(decimals);
+    return v.toString();
+  }
+
+  Widget _buildResultCard({
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: iconColor.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: iconColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: iconColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String label, bool isPositive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isPositive ? Colors.green.shade100 : Colors.orange.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPositive ? Icons.check_circle : Icons.cancel,
+            size: 18,
+            color: isPositive ? Colors.green.shade700 : Colors.orange.shade700,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: isPositive ? Colors.green.shade700 : Colors.orange.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
   Widget _resultBox() {
     if (lastResult == null) {
       return Text(
@@ -82,34 +182,82 @@ class _FaceDetectionPageState extends State<FaceDetectionPage> {
       );
     }
 
-    final label = lastResult!["label"]?.toString() ?? "-";
-    final score = lastResult!["score"];
-    final thr = lastResult!["threshold"];
-    final margin = lastResult!["margin_from_threshold"];
+    // === Parse Hijab Detection ===
+    final hijabData = lastResult!["hijab_detection"] as Map<String, dynamic>?;
+    final hijabLabel = hijabData?["label"]?.toString() ?? "-";
+    final hijabScore = hijabData?["score"];
+    final hijabThreshold = hijabData?["threshold"];
+    final hijabMargin = hijabData?["margin_from_threshold"];
+    final isHijab = hijabLabel == "HIJAB";
 
-    String fmtNum(dynamic v) {
-      if (v == null) return "-";
-      if (v is num) return v.toStringAsFixed(6);
-      return v.toString();
-    }
+    // === Parse Facial Hair (Kumis) Detection ===
+    final facialHairData = lastResult!["facial_hair_detection"] as Map<String, dynamic>?;
+    final hasFacialHair = facialHairData?["has_facial_hair"] ?? false;
+    final facialHairSuccess = facialHairData?["success"] ?? false;
+    final coverage = facialHairData?["coverage_percentage"];
+    final confidence = facialHairData?["confidence"];
+    final facialHairMessage = facialHairData?["message"]?.toString() ?? "-";
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Hasil: $label",
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text("Score: ${fmtNum(score)}"),
-        Text("Threshold: ${fmtNum(thr)}"),
-        Text("Margin: ${fmtNum(margin)}"),
-        const SizedBox(height: 10),
-        Text(
-          statusText,
-          style: TextStyle(color: Colors.grey.shade700),
-        ),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // === Hijab Detection Card ===
+          _buildResultCard(
+            title: "Deteksi Hijab",
+            icon: Icons.face_retouching_natural,
+            iconColor: const Color(0xFF6A5AE0),
+            children: [
+              _buildStatusChip(
+                isHijab ? "Berhijab ✓" : "Tidak Berhijab",
+                isHijab,
+              ),
+              const SizedBox(height: 10),
+              _buildInfoRow("Score", fmtNum(hijabScore, decimals: 4)),
+              _buildInfoRow("Threshold", fmtNum(hijabThreshold, decimals: 4)),
+              _buildInfoRow("Margin", fmtNum(hijabMargin, decimals: 4)),
+            ],
+          ),
+
+          // === Facial Hair Detection Card ===
+          _buildResultCard(
+            title: "Deteksi Kumis/Jenggot",
+            icon: Icons.face,
+            iconColor: const Color(0xFF4CAF50),
+            children: [
+              if (!facialHairSuccess)
+                Text(
+                  facialHairMessage,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                )
+              else ...[
+                _buildStatusChip(
+                  hasFacialHair ? "Ada Kumis/Jenggot" : "Tidak Ada Kumis",
+                  !hasFacialHair, // Inverted: tidak ada kumis = hijau (positif untuk wanita)
+                ),
+                const SizedBox(height: 10),
+                _buildInfoRow("Coverage", "${fmtNum(coverage)}%"),
+                _buildInfoRow("Confidence", fmtNum(confidence)),
+                const SizedBox(height: 4),
+                Text(
+                  facialHairMessage,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          // === Status ===
+          Text(
+            statusText,
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+        ],
+      ),
     );
   }
 
@@ -279,48 +427,50 @@ class _FaceDetectionPageState extends State<FaceDetectionPage> {
                       const SizedBox(height: 20),
 
                       // ================= BEAUTIFUL RESULT BOX =================
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFFB9A7FF),
-                              Color(0xFFD6C9FF),
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFFB9A7FF),
+                                Color(0xFFD6C9FF),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
                             ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 8,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Icon bulat
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.7),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.assignment_turned_in,
-                                color: Color(0xFF4F3CC9),
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-
-                            // Result
-                            Expanded(child: _resultBox()),
-                          ],
+                          child: lastResult == null
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Icon bulat
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.7),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.assignment_turned_in,
+                                        color: Color(0xFF4F3CC9),
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(child: _resultBox()),
+                                  ],
+                                )
+                              : _resultBox(),
                         ),
                       ),
                     ],
