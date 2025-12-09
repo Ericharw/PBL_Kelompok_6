@@ -13,7 +13,7 @@ class FaceDetectionPage extends StatefulWidget {
 }
 
 class _FaceDetectionPageState extends State<FaceDetectionPage> {
-  final String apiBaseUrl = "http://192.168.1.81:8000";
+  final String apiBaseUrl = "http://192.168.68.135:8000";
   late final ApiService api;
 
   String? imagePath;
@@ -195,7 +195,7 @@ class _FaceDetectionPageState extends State<FaceDetectionPage> {
     final hasFacialHair = facialHairData?["has_facial_hair"] ?? false;
     final facialHairSuccess = facialHairData?["success"] ?? false;
     final coverage = facialHairData?["coverage_percentage"];
-    final confidence = facialHairData?["confidence"];
+    // final confidence = facialHairData?["confidence"];
     final facialHairMessage = facialHairData?["message"]?.toString() ?? "-";
 
     return SingleChildScrollView(
@@ -223,7 +223,7 @@ class _FaceDetectionPageState extends State<FaceDetectionPage> {
           _buildResultCard(
             title: "Deteksi Kumis/Jenggot",
             icon: Icons.face,
-            iconColor: const Color(0xFF4CAF50),
+            iconColor: const Color(0xFF6A5AE0),
             children: [
               if (!facialHairSuccess)
                 Text(
@@ -233,11 +233,11 @@ class _FaceDetectionPageState extends State<FaceDetectionPage> {
               else ...[
                 _buildStatusChip(
                   hasFacialHair ? "Ada Kumis/Jenggot" : "Tidak Ada Kumis",
-                  !hasFacialHair, // Inverted: tidak ada kumis = hijau (positif untuk wanita)
+                  hasFacialHair, // Inverted: tidak ada kumis = hijau (positif untuk wanita)
                 ),
                 const SizedBox(height: 10),
                 _buildInfoRow("Coverage", "${fmtNum(coverage)}%"),
-                _buildInfoRow("Confidence", fmtNum(confidence)),
+                // _buildInfoRow("Confidence", fmtNum(confidence)),
                 const SizedBox(height: 4),
                 Text(
                   facialHairMessage,
