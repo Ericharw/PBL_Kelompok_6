@@ -13,7 +13,7 @@ class FaceDetectionPage extends StatefulWidget {
 }
 
 class _FaceDetectionPageState extends State<FaceDetectionPage> {
-  final String apiBaseUrl = "http://192.168.68.135:8000";
+  final String apiBaseUrl = "https://kiak-backendkiak.hf.space";
   late final ApiService api;
 
   String? imagePath;
